@@ -1,0 +1,95 @@
+---
+output: html_notebook
+---
+
+## Running a Population Level Estimation in the GT RStudio Environment ##
+1. Go into your MyProjects folder from your Home directory.
+2. Go into the EstimationPackages folder.
+3. Click the "New Folder" button and name it for your analysis (eg. ZocorVsLipitor-MusclePain). This is your **FolderName**.
+4. **In the template below, replace all the *YourFolderName* with this FolderName.**
+5. Go into YourFolderName and click Upload.
+6. Select the .zip file you have downloaded from the Atlas Estimation tool.
+7. It should upload and populate a bunch of files.  
+8. Note the name of the file with .Rproj extension.  This is your **PackageName**.
+9. **In the template below, replace all the *YourPackageName* below with this PackageName.**
+10. Click Play on each section below to run.  If you have any errors, note the errors and check your naming.  If you cannot debug, contact your TA via Piazza.
+11. The final button should produce an interactive application with the results of your analysis.
+
+```{r}
+# Loading a set of statistical tools and database connectors
+library(devtools)
+library(CohortMethod)
+library(SqlRender)
+library(EmpiricalCalibration)
+library(MethodEvaluation)
+library(DatabaseConnector)
+```
+
+
+```{r}
+install("~/MyProjects/EstimationPackages/cancerEstimation", upgrade = FALSE)
+library(MyStudy)
+```
+
+
+```{r}
+#Connection string for the OMOP database on Redshift
+connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = "redshift",
+server = "gt-health-analytics-databasesstac-redshiftcluster-1tcacwzlt4w3n.cytuooiy3omo.us-east-1.redshift.amazonaws.com/mycdm",
+user = "master",
+password = "Password1",
+port = "5439")
+
+#define max computer cores
+maxCores <- parallel::detectCores()
+
+#Housekeeping for Oracle databases
+oracleTempSchema <- NULL
+```
+
+```{r}
+# Pick the database you'd like to run on.  Default is SynPUF with 100,000 patients
+cdmDatabaseSchema <- "CMSDESynPUF100k"
+cohortDatabaseSchema <- "CMSDESynPUF100kresults"
+cohortTable <- "test_cohorts"
+
+# To use larger database, uncomment lines below
+# cdmDatabaseSchema <- "CMSDESynPUF23m"
+# cohortDatabaseSchema <- "CMSDESynPUF23mresults"
+```
+
+```{r}
+# Some metadata about the SynPUF dataset:
+	databaseId <- "Synpuf"
+	databaseName <- "Medicare Claims Synthetic Public Use Files (SynPUFs)"
+	databaseDescription <- "Medicare Claims Synthetic Public Use Files (SynPUFs) were created to allow interested parties to gain familiarity using Medicare claims data while protecting beneficiary privacy. These files are intended to promote development of software and applications that utilize files in this format, train researchers on the use and complexities of Centers for Medicare and Medicaid Services (CMS) claims, and support safe data mining innovations. The SynPUFs were created by combining randomized information from multiple unique beneficiaries and changing variable values. This randomization and combining of beneficiary information ensures privacy of health information."
+```
+
+```{r}
+outputFolder <- "~/MyProjects/EstimationResults/cancerEstimation"
+```
+
+```{r}
+	execute(connectionDetails = connectionDetails,
+            cdmDatabaseSchema = cdmDatabaseSchema,
+            cohortDatabaseSchema = cohortDatabaseSchema,
+            cohortTable = cohortTable,
+            oracleTempSchema = oracleTempSchema,
+            outputFolder = outputFolder,
+            databaseId = databaseId,
+            databaseName = databaseName,
+            databaseDescription = databaseDescription,
+            createCohorts = TRUE,
+            synthesizePositiveControls = TRUE,
+            runAnalyses = TRUE,
+            runDiagnostics = TRUE,
+            packageResults = TRUE,
+            maxCores = maxCores)
+```
+
+```{r}
+prepareForEvidenceExplorer("~/MyProjects/EstimationResults/cancerEstimation/export/ResultsSynpuf.zip", "~/shinyData")
+
+launchEvidenceExplorer("~/shinyData", blind = FALSE)
+```
+
